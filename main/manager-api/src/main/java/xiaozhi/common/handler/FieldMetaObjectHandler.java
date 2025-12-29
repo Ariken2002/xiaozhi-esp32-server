@@ -1,13 +1,15 @@
 package xiaozhi.common.handler;
 
-import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import xiaozhi.common.constant.Constant;
-import xiaozhi.common.user.UserDetail;
-import xiaozhi.modules.security.user.SecurityUser;
+import java.util.Date;
+
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
 
-import java.util.Date;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+
+import xiaozhi.common.constant.Constant;
+import xiaozhi.common.user.UserDetail;
+import xiaozhi.modules.security.user.SecurityUser;
 
 /**
  * 公共字段，自动填充值
@@ -22,35 +24,51 @@ public class FieldMetaObjectHandler implements MetaObjectHandler {
     private final static String UPDATER = "updater";
 
     private final static String DATA_OPERATION = "dataOperation";
-    private final static String DEPT_ID = "deptId";
 
     @Override
     public void insertFill(MetaObject metaObject) {
         UserDetail user = SecurityUser.getUser();
         Date date = new Date();
 
-        //创建者
+        // 创建者
         strictInsertFill(metaObject, CREATOR, Long.class, user.getId());
-        //创建时间
-        strictInsertFill(metaObject, CREATE_DATE, Date.class, date);
+        // 创建时间 - 支持createDate和createdAt两种字段名
+        if (metaObject.hasSetter(CREATE_DATE)) {
+            strictInsertFill(metaObject, CREATE_DATE, Date.class, date);
+        }
+        if (metaObject.hasSetter("createdAt")) {
+            strictInsertFill(metaObject, "createdAt", Date.class, date);
+        }
 
-        //更新者
+        // 更新者
         strictInsertFill(metaObject, UPDATER, Long.class, user.getId());
-        //更新时间
-        strictInsertFill(metaObject, UPDATE_DATE, Date.class, date);
+        // 更新时间 - 支持updateDate和updatedAt两种字段名
+        if (metaObject.hasSetter(UPDATE_DATE)) {
+            strictInsertFill(metaObject, UPDATE_DATE, Date.class, date);
+        }
+        if (metaObject.hasSetter("updatedAt")) {
+            strictInsertFill(metaObject, "updatedAt", Date.class, date);
+        }
 
-        //数据标识
+        // 数据标识
         strictInsertFill(metaObject, DATA_OPERATION, String.class, Constant.DataOperation.INSERT.getValue());
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
-        //更新者
-        strictUpdateFill(metaObject, UPDATER, Long.class, SecurityUser.getUserId());
-        //更新时间
-        strictUpdateFill(metaObject, UPDATE_DATE, Date.class, new Date());
+        Date date = new Date();
 
-        //数据标识
+        // 更新者
+        strictUpdateFill(metaObject, UPDATER, Long.class, SecurityUser.getUserId());
+        // 更新时间 - 支持updateDate和updatedAt两种字段名
+        if (metaObject.hasSetter(UPDATE_DATE)) {
+            strictUpdateFill(metaObject, UPDATE_DATE, Date.class, date);
+        }
+        if (metaObject.hasSetter("updatedAt")) {
+            strictUpdateFill(metaObject, "updatedAt", Date.class, date);
+        }
+
+        // 数据标识
         strictInsertFill(metaObject, DATA_OPERATION, String.class, Constant.DataOperation.UPDATE.getValue());
     }
 }

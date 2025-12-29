@@ -1,54 +1,20 @@
-# 部署方案参考
-![图片](images/deploy.png)
-# 方式一：docker快速部署
+# 部署架构图
+![请参考-最简化架构图](../docs/images/deploy1.png)
+# 方式一：Docker只运行Server
 
-docker镜像已支持x86架构、arm64架构的CPU，支持在国产操作系统上运行。
+`0.8.2`版本开始，本项目发行的docker镜像只支持`x86架构`，如果需要在`arm64架构`的CPU上部署，可按照[这个教程](docker-build.md)在本机编译`arm64的镜像`。
 
 ## 1. 安装docker
 
 如果您的电脑还没安装docker，可以按照这里的教程安装：[docker安装](https://www.runoob.com/docker/ubuntu-docker-install.html)
 
-如果你已经安装好docker，你可以[1.1使用懒人脚本](#11-懒人脚本)自动帮你下载所需的文件和配置文件，你可以使用docker[1.2手动部署](#12-手动部署)。
+安装好docker后，进继续。
 
-### 1.1 懒人脚本
+### 1.1 手动部署
 
-你可以使用以下命令一键下载并执行部署脚本：
-请确保你的环境可以正常访问 GitHub 否则无法下载脚本。
-```bash
-curl -L -o docker-setup.sh https://raw.githubusercontent.com/xinnan-tech/xiaozhi-esp32-server/main/docker-setup.sh
-```
+#### 1.1.1 创建目录
 
-如果您的电脑是windows系统，请使用使用 Git Bash、WSL、PowerShell 或 CMD 运行以下命令：
-```bash
-# Git Bash 或 WSL
-sh docker-setup.sh
-# PowerShell 或 CMD
-.\docker-setup.sh
-```
-
-如果您的电脑是linux 或者 macos 系统，请使用终端运行以下命令：
-```bash
-chmod +x docker-setup.sh
-./docker-setup.sh
-```
-
-脚本会自动完成以下操作：
-> 1. 创建必要的目录结构
-> 2. 下载语音识别模型
-> 3. 下载配置文件
-> 4. 检查文件完整性
->
-> 执行完成后，请按照提示配置 API 密钥。
-
-当你一切顺利完成以上操作后，继续操作[配置项目文件](#3-配置项目文件)
-
-### 1.2 手动部署
-
-如果懒人脚本无法正常运行，请按本章节1.2进行手动部署。
-
-#### 1.2.1 创建目录
-
-安装完后，你需要为这个项目找一个安放配置文件的目录，例如我们可以新建一个文件夹叫`xiaozhi-server`。
+安装完docker后，你需要为这个项目找一个安放配置文件的目录，例如我们可以新建一个文件夹叫`xiaozhi-server`。
 
 创建好目录后，你需要在`xiaozhi-server`下面创建`data`文件夹和`models`文件夹，`models`下面还要再创建`SenseVoiceSmall`文件夹。
 
@@ -61,18 +27,18 @@ xiaozhi-server
      ├─ SenseVoiceSmall
 ```
 
-#### 1.2.2 下载语音识别模型文件
+#### 1.1.2 下载语音识别模型文件
 
 你需要下载语音识别的模型文件，因为本项目的默认语音识别用的是本地离线语音识别方案。可通过这个方式下载
 [跳转到下载语音识别模型文件](#模型文件)
 
 下载完后，回到本教程。
 
-#### 1.2.3 下载配置文件
+#### 1.1.3 下载配置文件
 
 你需要下载两个配置文件：`docker-compose.yaml` 和 `config.yaml`。需要从项目仓库下载这两个文件。
 
-##### 1.2.3.1 下载 docker-compose.yaml
+##### 1.1.3.1 下载 docker-compose.yaml
 
 用浏览器打开[这个链接](../main/xiaozhi-server/docker-compose.yml)。
 
@@ -81,7 +47,7 @@ xiaozhi-server
 
 下载完后，回到本教程继续往下。
 
-##### 1.2.3.2 下载 config.yaml
+##### 1.1.3.2 创建 config.yaml
 
 用浏览器打开[这个链接](../main/xiaozhi-server/config.yaml)。
 
@@ -102,19 +68,19 @@ xiaozhi-server
 
 如果你的文件目录结构也是上面的，就继续往下。如果不是，你就再仔细看看是不是漏操作了什么。
 
-## 3. 配置项目文件
+## 2. 配置项目文件
 
 接下里，程序还不能直接运行，你需要配置一下，你到底使用的是什么模型。你可以看这个教程：
 [跳转到配置项目文件](#配置项目)
 
 配置完项目文件后，回到本教程继续往下。
 
-## 4. 执行docker命令
+## 3. 执行docker命令
 
 打开命令行工具，使用`终端`或`命令行`工具 进入到你的`xiaozhi-server`，执行以下命令
 
 ```
-docker-compose up -d
+docker compose up -d
 ```
 
 执行完后，再执行以下命令，查看日志信息。
@@ -137,50 +103,15 @@ docker logs -f xiaozhi-esp32-server
 ```
 docker stop xiaozhi-esp32-server
 docker rm xiaozhi-esp32-server
+docker stop xiaozhi-esp32-server-web
+docker rm xiaozhi-esp32-server-web
 docker rmi ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+docker rmi ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
 ```
 
 5.3、重新按docker方式部署
 
-# 方式二：借助Docker环境运行部署
-
-开发人员如果不想安装`conda`环境，可以使用这种方法管理好依赖。
-
-## 1.克隆项目
-
-## 2.[跳转到下载语音识别模型文件](#模型文件)
-
-## 3.[跳转到配置项目文件](#配置项目)
-
-## 4.运行docker
-
-修改完配置后，打开命令行工具，`cd`进入到你的`main/xiaozhi-server`下，执行以下命令
-
-```sh
-docker run -it --name xiaozhi-env --restart always --security-opt seccomp:unconfined \
-  -p 8000:8000 \
-  -p 8002:8002 \
-  -v ./:/app \
-  kalicyh/python:xiaozhi
-```
-
-然后就和正常开发一样了
-
-## 5.安装依赖
-
-在刚刚的打开的终端运行
-
-```sh
-pip install -r requirements.txt
-```
-
-## 6.运行项目
-
-```sh
-python app.py
-```
-
-# 方式三：本地源码运行
+# 方式二：本地源码只运行Server
 
 ## 1.安装基础环境
 
@@ -208,6 +139,9 @@ conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/
 
 conda install libopus -y
 conda install ffmpeg -y
+
+# 在 Linux 环境下进行部署时,如出现类似缺失 libiconv.so.2 动态库的报错 请通过以下命令进行安装
+conda install libiconv -y
 ```
 
 请注意，以上命令，不是一股脑执行就成功的，你需要一步步执行，每一步执行完后，都检查一下输出的日志，查看是否成功。
@@ -241,7 +175,7 @@ pip install -r requirements.txt
 
 ## 4.配置项目文件
 
-接下里，程序还不能直接运行，你需要配置一下，你到底使用的是什么模型。你可以看这个教程：
+接下来，程序还不能直接运行，你需要配置一下，你到底使用的是什么模型。你可以看这个教程：
 [跳转到配置项目文件](#配置项目)
 
 ## 5.运行项目
@@ -259,42 +193,35 @@ python app.py
 ## 配置项目
 
 如果你的`xiaozhi-server`目录没有`data`，你需要创建`data`目录。
-如果你的`data`下面没有`.config.yaml`文件，你可以把源码目录下的`config.yaml`文件复制一份，重命名为`.config.yaml`
+如果你的`data`下面没有`.config.yaml`文件，有两个方式，任选一种：
 
-修改`xiaozhi-server`下`data`目录下的`.config.yaml`文件，配置本项目必须的一个配置。
+第一个方式：你可以把`xiaozhi-server`目录下的`config.yaml`文件复制到`data`，并重命名为`.config.yaml`。在此文件上修改
+
+第二个方式：你也可以创建在`data`目录下手动创建`.config.yaml`空文件，然后在这个文件中增加必要的配置信息，系统会优先读取`.config.yaml`文件的配置，如果`.config.yaml`没有配置的，系统会自动去加载`xiaozhi-server`目录下的`config.yaml`的配置。推荐使用这种方式，这种方式是最简洁的方式。
 
 - 默认的LLM使用的是`ChatGLMLLM`，你需要配置密钥，因为他们的模型，虽然有免费的，但是仍要去[官网](https://bigmodel.cn/usercenter/proj-mgmt/apikeys)注册密钥，才能启动。
 
-配置说明：这里是各个功能使用的默认组件，例如LLM默认使用`ChatGLMLLM`模型。如果需要切换模型，就是改对应的名称。
-本项目的默认配置仅是成本最低配置（`glm-4-flash`和`EdgeTTS`都是免费的），如果需要更优的更快的搭配，需要自己结合部署环境切换各组件的使用。
+以下是一个能正常跑起来的，最简单的`.config.yaml`配置示例
 
 ```
+server:
+  websocket: ws://你的ip或者域名:端口号/xiaozhi/v1/
+prompt: |
+  我是一个叫小智/小志的台湾女孩，说话机车，声音好听，习惯简短表达，爱用网络梗。
+  我的男朋友是一个程序员，梦想是开发出一个机器人，能够帮助人们解决生活中的各种问题。
+  我是一个喜欢哈哈大笑的女孩，爱东说西说吹牛，不合逻辑的也照吹，就要逗别人开心。
+  请你像一个人一样说话，请勿返回配置xml及其他特殊字符。
+
 selected_module:
-  VAD: SileroVAD
-  ASR: FunASR
-  LLM: ChatGLMLLM
-  TTS: EdgeTTS
-  # 默认不开启记忆，如需开启请看配置文件里的描述
-  Memory: nomem   
-  # 默认不开启意图识别，如需开启请看配置文件里的描述
-  Intent: nointent
-```
+  LLM: DoubaoLLM
 
-比如修改`LLM`使用的组件，就看本项目支持哪些`LLM` API接口，当前支持的是`openai`、`dify`。欢迎验证和支持更多LLM平台的接口。
-使用时，在`selected_module`修改成对应的如下LLM配置的名称：
-
-```
 LLM:
-  DeepSeekLLM:
-    type: openai
-    ...
   ChatGLMLLM:
-    type: openai
-    ...
-  DifyLLM:
-    type: dify
-    ...
+    api_key: xxxxxxxxxxxxxxx.xxxxxx
 ```
+
+建议先将最简单的配置运行起来，然后再去`xiaozhi/config.yaml`阅读配置的使用说明。
+比如你要换更换模型，修改`selected_module`下的配置就行。
 
 ## 模型文件
 
@@ -302,7 +229,7 @@ LLM:
 文件放在`models/SenseVoiceSmall`
 目录下。下面两个下载路线任选一个。
 
-- 线路一：阿里魔塔下载[SenseVoiceSmall](https://modelscope.cn/models/iic/SenseVoiceSmall/resolve/master/model.pt)
+- 线路一：阿里魔搭下载[SenseVoiceSmall](https://modelscope.cn/models/iic/SenseVoiceSmall/resolve/master/model.pt)
 - 线路二：百度网盘下载[SenseVoiceSmall](https://pan.baidu.com/share/init?surl=QlgM58FHhYv1tFnUT_A8Sg&pwd=qvna) 提取码:
   `qvna`
 
@@ -311,31 +238,54 @@ LLM:
 如果你能看到，类似以下日志,则是本项目服务启动成功的标志。
 
 ```
-25-02-23 12:01:09[core.websocket_server] - INFO - Server is running at ws://xxx.xx.xx.xx:8000
-25-02-23 12:01:09[core.websocket_server] - INFO - =======上面的地址是websocket协议地址，请勿用浏览器访问=======
+250427 13:04:20[0.3.11_SiFuChTTnofu][__main__]-INFO-OTA接口是           http://192.168.4.123:8003/xiaozhi/ota/
+250427 13:04:20[0.3.11_SiFuChTTnofu][__main__]-INFO-Websocket地址是     ws://192.168.4.123:8000/xiaozhi/v1/
+250427 13:04:20[0.3.11_SiFuChTTnofu][__main__]-INFO-=======上面的地址是websocket协议地址，请勿用浏览器访问=======
+250427 13:04:20[0.3.11_SiFuChTTnofu][__main__]-INFO-如想测试websocket请用谷歌浏览器打开test目录下的test_page.html
+250427 13:04:20[0.3.11_SiFuChTTnofu][__main__]-INFO-=======================================================
 ```
 
 正常来说，如果您是通过源码运行本项目，日志会有你的接口地址信息。
 但是如果你用docker部署，那么你的日志里给出的接口地址信息就不是真实的接口地址。
 
 最正确的方法，是根据电脑的局域网IP来确定你的接口地址。
-如果你的电脑的局域网IP比如是`192.168.1.25`，那么你的接口地址就是：`ws://192.168.1.25:8000`。
+如果你的电脑的局域网IP比如是`192.168.1.25`，那么你的接口地址就是：`ws://192.168.1.25:8000/xiaozhi/v1/`，对应的OTA地址就是：`http://192.168.1.25:8003/xiaozhi/ota/`。
 
 这个信息很有用的，后面`编译esp32固件`需要用到。
 
-接下来，你就可以开始 [编译esp32固件](firmware-build.md)了。
+接下来，你就可以开始操作你的esp32设备了，你可以`自行编译esp32固件`也可以配置使用`虾哥编译好的1.6.1以上版本的固件`。两个任选一个
 
+1、 [编译自己的esp32固件](firmware-build.md)了。
 
+2、 [基于虾哥编译好的固件配置自定义服务器](firmware-setting.md)了。
+
+# 常见问题
 以下是一些常见问题，供参考：
 
-[1、为什么我说的话，小智识别出来很多韩文、日文、英文](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
-
-[2、为什么会出现“TTS 任务出错 文件不存在”？](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
-
-[3、TTS 经常失败，经常超时](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
-
-[4、如何提高小智对话响应速度？](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
-
-[5、我说话很慢，停顿时小智老是抢话](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
-
-[6、我想通过小智控制电灯、空调、远程开关机等操作](../README.md#1%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E8%AF%B4%E7%9A%84%E8%AF%9D%E5%B0%8F%E6%99%BA%E8%AF%86%E5%88%AB%E5%87%BA%E6%9D%A5%E5%BE%88%E5%A4%9A%E9%9F%A9%E6%96%87%E6%97%A5%E6%96%87%E8%8B%B1%E6%96%87)
+1、[为什么我说的话，小智识别出来很多韩文、日文、英文](./FAQ.md)<br/>
+2、[为什么会出现“TTS 任务出错 文件不存在”？](./FAQ.md)<br/>
+3、[TTS 经常失败，经常超时](./FAQ.md)<br/>
+4、[使用Wifi能连接自建服务器，但是4G模式却接不上](./FAQ.md)<br/>
+5、[如何提高小智对话响应速度？](./FAQ.md)<br/>
+6、[我说话很慢，停顿时小智老是抢话](./FAQ.md)<br/>
+## 部署相关教程
+1、[如何自动拉取本项目最新代码自动编译和启动](./dev-ops-integration.md)<br/>
+2、[如何部署MQTT网关开启MQTT+UDP协议](./mqtt-gateway-integration.md)<br/>
+3、[如何与Nginx集成](https://github.com/xinnan-tech/xiaozhi-esp32-server/issues/791)<br/>
+## 拓展相关教程
+1、[如何开启手机号码注册智控台](./ali-sms-integration.md)<br/>
+2、[如何集成HomeAssistant实现智能家居控制](./homeassistant-integration.md)<br/>
+3、[如何开启视觉模型实现拍照识物](./mcp-vision-integration.md)<br/>
+4、[如何部署MCP接入点](./mcp-endpoint-enable.md)<br/>
+5、[如何接入MCP接入点](./mcp-endpoint-integration.md)<br/>
+6、[如何开启声纹识别](./voiceprint-integration.md)<br/>
+7、[新闻插件源配置指南](./newsnow_plugin_config.md)<br/>
+8、[天气插件使用指南](./weather-integration.md)<br/>
+## 语音克隆、本地语音部署相关教程
+1、[如何在智控台克隆音色](./huoshan-streamTTS-voice-cloning.md)<br/>
+2、[如何部署集成index-tts本地语音](./index-stream-integration.md)<br/>
+3、[如何部署集成fish-speech本地语音](./fish-speech-integration.md)<br/>
+4、[如何部署集成PaddleSpeech本地语音](./paddlespeech-deploy.md)<br/>
+## 性能测试教程
+1、[各组件速度测试指南](./performance_tester.md)<br/>
+2、[定期公开测试结果](https://github.com/xinnan-tech/xiaozhi-performance-research)<br/>

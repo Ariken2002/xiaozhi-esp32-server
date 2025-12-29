@@ -1,31 +1,48 @@
-from config.logger import setup_logging
 import json
 import uuid
-from core.handle.sendAudioHandle import send_stt_message
+import asyncio
+from core.utils.dialogue import Message
+from core.providers.tts.dto.dto import ContentType
 from core.handle.helloHandle import checkWakeupWords
+from plugins_func.register import Action, ActionResponse
+from core.handle.sendAudioHandle import send_stt_message
 from core.utils.util import remove_punctuation_and_length
+from core.providers.tts.dto.dto import TTSMessageDTO, SentenceType
 
 TAG = __name__
-logger = setup_logging()
 
 
 async def handle_user_intent(conn, text):
+    # 预处理输入文本，处理可能的JSON格式
+    try:
+        if text.strip().startswith('{') and text.strip().endswith('}'):
+            parsed_data = json.loads(text)
+            if isinstance(parsed_data, dict) and "content" in parsed_data:
+                text = parsed_data["content"]  # 提取content用于意图分析
+                conn.current_speaker = parsed_data.get("speaker")  # 保留说话人信息
+    except (json.JSONDecodeError, TypeError):
+        pass
+
     # 检查是否有明确的退出命令
-    if await check_direct_exit(conn, text):
-        return True
-    # 检查是否是唤醒词
-    if await checkWakeupWords(conn, text):
+    _, filtered_text = remove_punctuation_and_length(text)
+    if await check_direct_exit(conn, filtered_text):
         return True
 
-    if conn.use_function_call_mode:
+    # 检查是否是唤醒词
+    if await checkWakeupWords(conn, filtered_text):
+        return True
+
+    if conn.intent_type == "function_call":
         # 使用支持function calling的聊天方法,不再进行意图分析
         return False
     # 使用LLM进行意图分析
-    intent = await analyze_intent_with_llm(conn, text)
-    if not intent:
+    intent_result = await analyze_intent_with_llm(conn, text)
+    if not intent_result:
         return False
+    # 会话开始时生成sentence_id
+    conn.sentence_id = str(uuid.uuid4().hex)
     # 处理各种意图
-    return await process_intent_result(conn, intent, text)
+    return await process_intent_result(conn, intent_result, text)
 
 
 async def check_direct_exit(conn, text):
@@ -34,82 +51,157 @@ async def check_direct_exit(conn, text):
     cmd_exit = conn.cmd_exit
     for cmd in cmd_exit:
         if text == cmd:
-            logger.bind(tag=TAG).info(f"识别到明确的退出命令: {text}")
+            conn.logger.bind(tag=TAG).info(f"识别到明确的退出命令: {text}")
+            await send_stt_message(conn, text)
             await conn.close()
             return True
     return False
 
 
-
 async def analyze_intent_with_llm(conn, text):
     """使用LLM分析用户意图"""
-    if not hasattr(conn, 'intent') or not conn.intent:
-        logger.bind(tag=TAG).warning("意图识别服务未初始化")
+    if not hasattr(conn, "intent") or not conn.intent:
+        conn.logger.bind(tag=TAG).warning("意图识别服务未初始化")
         return None
 
     # 对话历史记录
     dialogue = conn.dialogue
     try:
         intent_result = await conn.intent.detect_intent(conn, dialogue.dialogue, text)
-        # 尝试解析JSON结果
-        try:
-            intent_data = json.loads(intent_result)
-            if "intent" in intent_data:
-                return intent_data["intent"]
-        except json.JSONDecodeError:
-            # 如果不是JSON格式，尝试直接获取意图文本
-            return intent_result.strip()
-
+        return intent_result
     except Exception as e:
-        logger.bind(tag=TAG).error(f"意图识别失败: {str(e)}")
+        conn.logger.bind(tag=TAG).error(f"意图识别失败: {str(e)}")
 
     return None
 
 
-async def process_intent_result(conn, intent, original_text):
+async def process_intent_result(conn, intent_result, original_text):
     """处理意图识别结果"""
-    # 处理退出意图
-    if "结束聊天" in intent:
-        logger.bind(tag=TAG).info(f"识别到退出意图: {intent}")
-        # 如果是明确的离别意图，发送告别语并关闭连接
-        await send_stt_message(conn, original_text)
-        conn.executor.submit(conn.chat_and_close, original_text)
-        return True
+    try:
+        # 尝试将结果解析为JSON
+        intent_data = json.loads(intent_result)
 
-    # 处理播放音乐意图
-    if "播放音乐" in intent:
-        logger.bind(tag=TAG).info(f"识别到音乐播放意图: {intent}")
-        # 调用play_music函数来播放音乐
-        song_name = extract_text_in_brackets(intent)
-        function_id = str(uuid.uuid4().hex)
-        function_name = "play_music"
-        function_arguments = '{ "song_name": "' + song_name + '" }'
+        # 检查是否有function_call
+        if "function_call" in intent_data:
+            # 直接从意图识别获取了function_call
+            conn.logger.bind(tag=TAG).debug(
+                f"检测到function_call格式的意图结果: {intent_data['function_call']['name']}"
+            )
+            function_name = intent_data["function_call"]["name"]
+            if function_name == "continue_chat":
+                return False
 
-        function_call_data = {
-            "name": function_name,
-            "id": function_id,
-            "arguments": function_arguments
-        }
-        conn.func_handler.handle_llm_function_call(conn, function_call_data)
-        return True
+            if function_name == "result_for_context":
+                await send_stt_message(conn, original_text)
+                conn.client_abort = False
+                
+                def process_context_result():
+                    conn.dialogue.put(Message(role="user", content=original_text))
+                    
+                    from core.utils.current_time import get_current_time_info
 
-    # 其他意图处理可以在这里扩展
+                    current_time, today_date, today_weekday, lunar_date = get_current_time_info()
+                    
+                    # 构建带上下文的基础提示
+                    context_prompt = f"""当前时间：{current_time}
+                                        今天日期：{today_date} ({today_weekday})
+                                        今天农历：{lunar_date}
 
-    # 默认返回False，表示继续常规聊天流程
-    return False
+                                        请根据以上信息回答用户的问题：{original_text}"""
+                    
+                    response = conn.intent.replyResult(context_prompt, original_text)
+                    speak_txt(conn, response)
+                
+                conn.executor.submit(process_context_result)
+                return True
+
+            function_args = {}
+            if "arguments" in intent_data["function_call"]:
+                function_args = intent_data["function_call"]["arguments"]
+                if function_args is None:
+                    function_args = {}
+            # 确保参数是字符串格式的JSON
+            if isinstance(function_args, dict):
+                function_args = json.dumps(function_args)
+
+            function_call_data = {
+                "name": function_name,
+                "id": str(uuid.uuid4().hex),
+                "arguments": function_args,
+            }
+
+            await send_stt_message(conn, original_text)
+            conn.client_abort = False
+
+            # 使用executor执行函数调用和结果处理
+            def process_function_call():
+                conn.dialogue.put(Message(role="user", content=original_text))
+
+                # 使用统一工具处理器处理所有工具调用
+                try:
+                    result = asyncio.run_coroutine_threadsafe(
+                        conn.func_handler.handle_llm_function_call(
+                            conn, function_call_data
+                        ),
+                        conn.loop,
+                    ).result()
+                except Exception as e:
+                    conn.logger.bind(tag=TAG).error(f"工具调用失败: {e}")
+                    result = ActionResponse(
+                        action=Action.ERROR, result=str(e), response=str(e)
+                    )
+
+                if result:
+                    if result.action == Action.RESPONSE:  # 直接回复前端
+                        text = result.response
+                        if text is not None:
+                            speak_txt(conn, text)
+                    elif result.action == Action.REQLLM:  # 调用函数后再请求llm生成回复
+                        text = result.result
+                        conn.dialogue.put(Message(role="tool", content=text))
+                        llm_result = conn.intent.replyResult(text, original_text)
+                        if llm_result is None:
+                            llm_result = text
+                        speak_txt(conn, llm_result)
+                    elif (
+                        result.action == Action.NOTFOUND
+                        or result.action == Action.ERROR
+                    ):
+                        text = result.result
+                        if text is not None:
+                            speak_txt(conn, text)
+                    elif function_name != "play_music":
+                        # For backward compatibility with original code
+                        # 获取当前最新的文本索引
+                        text = result.response
+                        if text is None:
+                            text = result.result
+                        if text is not None:
+                            speak_txt(conn, text)
+
+            # 将函数执行放在线程池中
+            conn.executor.submit(process_function_call)
+            return True
+        return False
+    except json.JSONDecodeError as e:
+        conn.logger.bind(tag=TAG).error(f"处理意图结果时出错: {e}")
+        return False
 
 
-def extract_text_in_brackets(s):
-    """
-    从字符串中提取中括号内的文字
-
-    :param s: 输入字符串
-    :return: 中括号内的文字，如果不存在则返回空字符串
-    """
-    left_bracket_index = s.find('[')
-    right_bracket_index = s.find(']')
-
-    if left_bracket_index != -1 and right_bracket_index != -1 and left_bracket_index < right_bracket_index:
-        return s[left_bracket_index + 1:right_bracket_index]
-    else:
-        return ""
+def speak_txt(conn, text):
+    conn.tts.tts_text_queue.put(
+        TTSMessageDTO(
+            sentence_id=conn.sentence_id,
+            sentence_type=SentenceType.FIRST,
+            content_type=ContentType.ACTION,
+        )
+    )
+    conn.tts.tts_one_sentence(conn, ContentType.TEXT, content_detail=text)
+    conn.tts.tts_text_queue.put(
+        TTSMessageDTO(
+            sentence_id=conn.sentence_id,
+            sentence_type=SentenceType.LAST,
+            content_type=ContentType.ACTION,
+        )
+    )
+    conn.dialogue.put(Message(role="assistant", content=text))

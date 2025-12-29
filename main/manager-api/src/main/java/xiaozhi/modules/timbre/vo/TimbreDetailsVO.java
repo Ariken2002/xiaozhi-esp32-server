@@ -1,19 +1,20 @@
 package xiaozhi.modules.timbre.vo;
 
+import java.io.Serializable;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import java.io.Serializable;
-
 /**
  * 音色详情展示VO
+ * 
  * @author zjy
  * @since 2025-3-21
  */
 @Data
 public class TimbreDetailsVO implements Serializable {
     @Schema(description = "音色id")
-    private Long id;
+    private String id;
 
     @Schema(description = "语言")
     private String languages;
@@ -23,6 +24,12 @@ public class TimbreDetailsVO implements Serializable {
 
     @Schema(description = "备注")
     private String remark;
+
+    @Schema(description = "参考音频路径")
+    private String referenceAudio;
+
+    @Schema(description = "參考文本")
+    private String referenceText;
 
     @Schema(description = "排序")
     private long sort;
